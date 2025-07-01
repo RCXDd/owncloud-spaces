@@ -1,35 +1,19 @@
-FROM owncloud/server:latest
+FROM nextcloud:latest
 
-# Set working directory
-WORKDIR /var/www/owncloud
-
-# Install required PHP extensions for S3
+# Install required packages
 RUN apt-get update && apt-get install -y \
-    php8.1-curl \
-    php8.1-xml \
-    php8.1-simplexml \
+    libmagickcore-6.q16-6-extra \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Composer for PHP dependencies
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+# Copy configuration
+COPY config.php /var/www/html/config/config.php
+COPY autoconfig.php /var/www/html/config/autoconfig.php
 
-# Install AWS SDK via Composer
-RUN composer require aws/aws-sdk-php
+# Set permissions
+RUN chown -R www-data:www-data /var/www/html
 
-# Copy custom configuration file
-COPY config.php /var/www/owncloud/config/config.php
+EXPOSE 80
 
-# Create data directory
-RUN mkdir -p /var/www/owncloud/data && \
-    chown -R www-data:www-data /var/www/owncloud && \
-    chmod -R 755 /var/www/owncloud
-
-# Expose port
-EXPOSE 8080
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --retries=5 \
-  CMD curl -f http://localhost:8080/status.php || exit 1
-
-# Start command
-CMD ["/usr/bin/entrypoint", "/usr/bin/owncloud", "server"]
+# Use original entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["apache2-foreground"]
